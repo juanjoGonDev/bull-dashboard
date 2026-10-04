@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog } from "./Dialog";
 import { Btn } from "./ui";
 import { Icon } from "./icons";
@@ -23,6 +23,11 @@ export function AddJobDialog({
   const [delay, setDelay] = useState("0");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ field: "queue" | "payload" | "general"; msg: string } | null>(null);
+  const queueMatches = useMemo(() => {
+    const term = queue.trim().toLowerCase();
+    const list = term ? queues.filter((item) => item.name.toLowerCase().includes(term)) : queues;
+    return list.slice(0, 8);
+  }, [queue, queues]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,24 +100,42 @@ export function AddJobDialog({
           </label>
           <input
             id="add-queue"
-            list="add-queue-list"
             value={queue}
             onChange={(e) => setQueue(e.target.value)}
             required
             aria-required="true"
             autoComplete="off"
+            placeholder="Busca o escribe una cola…"
             aria-invalid={err?.field === "queue"}
             aria-describedby={`add-queue-help${err?.field === "queue" ? " add-err" : ""}`}
+            aria-controls="add-queue-menu"
             className={inputCls}
           />
-          <datalist id="add-queue-list">
-            {queues.map((q) => (
-              <option key={q.name} value={q.name} />
-            ))}
-          </datalist>
           <p id="add-queue-help" className="mt-1 text-xs text-subtle">
-            Elige una de la lista o escribe un nombre nuevo para crearla.
+            Usa el campo como buscador o escribe un nombre nuevo para crearla.
           </p>
+          <div id="add-queue-menu" className="mt-2 rounded-lg border border-line bg-bg p-2">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-subtle">Colas existentes</p>
+            <div className="stable-scroll grid max-h-40 gap-1 overflow-y-auto pr-1" aria-label="Colas existentes">
+              {queueMatches.map((q) => {
+                const active = q.name === queue;
+                return (
+                  <button
+                    key={q.name}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setQueue(q.name)}
+                    className={`flex min-h-9 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-sm ${active ? "border-accent bg-accent text-accent-ink" : "border-line bg-panel text-muted hover:border-line-strong hover:bg-soft"}`}
+                  >
+                    <Icon name={q.paused ? "pause" : "layers"} size={14} />
+                    <span className="min-w-0 flex-1 truncate font-semibold">{q.name}</span>
+                    <span className={`shrink-0 text-xs tnum ${active ? "text-accent-ink/80" : "text-subtle"}`}>{q.counts.total.toLocaleString("es-ES")}</span>
+                  </button>
+                );
+              })}
+              {!queueMatches.length && <p className="rounded-lg border border-dashed border-line-strong bg-panel p-3 text-center text-xs text-subtle">No hay coincidencias. Se creará «{queue.trim() || "nueva cola"}».</p>}
+            </div>
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="min-w-0">

@@ -16,7 +16,7 @@ export const REFRESH_OPTIONS = [
  * - deadlineRef / cycleRef se leen desde la barra y la cuenta atrás SIN re-render de la página.
  * - Refresco manual = refresca + reinicia el ciclo al 100%.
  * - Pestaña oculta: no consulta (no satura Redis en segundo plano).
- * - Backoff progresivo si hay errores.
+ * - Si hay errores, mantiene el intervalo elegido para que la cuenta atrás y la barra sigan sincronizadas.
  * - Si llega una petición mientras otra está en curso, se encola UNA re-ejecución.
  */
 export function useAutoRefresh(onTick: () => Promise<void>, defaultMs = 10000) {
@@ -63,7 +63,7 @@ export function useAutoRefresh(onTick: () => Promise<void>, defaultMs = 10000) {
         busy.current = false;
         setErrorStreak(streak.current);
         const base = intervalRef.current;
-        schedule(base > 0 ? base + (ok ? 0 : Math.min(streak.current * 5000, 30000)) : 0);
+        schedule(base);
         if (pending.current) {
           pending.current = false;
           // ejecuta la petición encolada (p. ej. cambio de pestaña durante un refresco)
